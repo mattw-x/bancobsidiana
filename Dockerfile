@@ -83,4 +83,4 @@ RUN chown -R www-data:www-data /var/www/html/storage /var/www/html/database
 RUN chmod -R 775 /var/www/html/storage /var/www/html/database
 
 # Al final, el comando para arrancar y ejecutar migraciones
-CMD php artisan migrate --force && php artisan serve --host=0.0.0.0 --port=$PORT
+CMD php artisan session:table && php artisan migrate --force && php artisan serve --host=0.0.0.0 --port=$PORT
