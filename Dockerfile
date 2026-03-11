@@ -74,3 +74,13 @@ COPY docker-entrypoint.sh /usr/local/bin/
 RUN chmod +x /usr/local/bin/docker-entrypoint.sh
 
 ENTRYPOINT ["docker-entrypoint.sh"]
+
+# Aseguramos que existan las carpetas necesarias
+RUN mkdir -p /var/www/html/storage /var/www/html/database
+
+# Damos permisos al usuario www-data (el que usa Apache/Nginx en Docker)
+RUN chown -R www-data:www-data /var/www/html/storage /var/www/html/database
+RUN chmod -R 775 /var/www/html/storage /var/www/html/database
+
+# Al final, el comando para arrancar y ejecutar migraciones
+CMD php artisan migrate --force && php artisan serve --host=0.0.0.0 --port=$PORT
