@@ -1,8 +1,7 @@
 # Usamos PHP 8.3 con Apache
 FROM php:8.3-apache
 
-# 1. Instalar dependencias del sistema, extensiones PHP y Node.js 20
-# (Hacemos todo en un solo RUN para reducir capas y peso de la imagen)
+# 1. Instalar dependencias del sistema, extensiones PHP (incluyendo SQLite) y Node.js 20
 RUN apt-get update && apt-get install -y \
     git \
     curl \
@@ -12,15 +11,16 @@ RUN apt-get update && apt-get install -y \
     zip \
     unzip \
     libzip-dev \
-    default-mysql-client \
-    && docker-php-ext-install pdo_mysql mbstring exif pcntl bcmath gd zip \
+    sqlite3 \
+    libsqlite3-dev \
+    && docker-php-ext-install pdo_mysql pdo_sqlite mbstring exif pcntl bcmath gd zip \
     && curl -fsSL https://deb.nodesource.com/setup_20.x | bash - \
     && apt-get install -y nodejs \
     && apt-get clean && rm -rf /var/lib/apt/lists/*
 
-# 2. Configuración de Apache
-# Habilitar mod_rewrite y headers
-RUN a2enmod rewrite headers
+# 2. Configuración de Apache (Optimizada)
+# Habilitar módulos necesarios y cambiar el MPM para mayor estabilidad
+RUN a2dismod mpm_event && a2dismod mpm_worker && a2enmod mpm_prefork rewrite headers
 
 # Configurar Document Root a /public
 ENV APACHE_DOCUMENT_ROOT /var/www/html/public
@@ -34,17 +34,15 @@ COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
 WORKDIR /var/www/html
 
 # -----------------------------------------------------------------------------
-# FASE DE DEPENDENCIAS (Aprovechamos la caché de Docker)
+# FASE DE DEPENDENCIAS
 # -----------------------------------------------------------------------------
 
 # 5. Instalar dependencias de Composer PRIMERO
 COPY composer.json composer.lock ./
-# IMPORTANTE: Quitamos '--no-dev' para que Faker se instale y funcionen los Seeders
 RUN composer install --optimize-autoloader --no-scripts
 
 # 6. Instalar dependencias de Node.js
 COPY package*.json ./
-# Forzamos la instalación de plugins necesarios para Tailwind v4
 RUN npm install @tailwindcss/postcss postcss autoprefixer
 RUN npm install
 
@@ -53,34 +51,19 @@ RUN npm install
 # -----------------------------------------------------------------------------
 
 # 7. Copiar TODO el código fuente
-# (Esto se hace antes del build para que Vite encuentre los archivos)
 COPY . .
 
 # 8. Compilar Assets (Vite)
-# Genera public/build/manifest.json
 RUN npm run build
 
 # 9. Permisos y Estructura de carpetas
-# Creamos la carpeta database por si no existe para SQLite
 RUN mkdir -p database storage/framework/sessions storage/framework/views storage/framework/cache \
+    && touch database/database.sqlite \
     && chown -R www-data:www-data /var/www/html \
     && chmod -R 775 storage bootstrap/cache database
 
-# 10. Exponer puerto 80
+# 10. Exponer puerto 80 (Railway mapeará este puerto automáticamente)
 EXPOSE 80
 
-# 10. Script de inicio para ejecutar migraciones antes de arrancar
-COPY docker-entrypoint.sh /usr/local/bin/
-RUN chmod +x /usr/local/bin/docker-entrypoint.sh
-
-ENTRYPOINT ["docker-entrypoint.sh"]
-
-# Aseguramos que existan las carpetas necesarias
-RUN mkdir -p /var/www/html/storage /var/www/html/database
-
-# Damos permisos al usuario www-data (el que usa Apache/Nginx en Docker)
-RUN chown -R www-data:www-data /var/www/html/storage /var/www/html/database
-RUN chmod -R 775 /var/www/html/storage /var/www/html/database
-
-# Al final, el comando para arrancar y ejecutar migraciones
-CMD php artisan session:table && php artisan migrate --force && php artisan serve --host=0.0.0.0 --port=$PORT
+# 11. Ejecutar Apache en primer plano (El Start Command de Railway tomará el control de todos modos)
+CMD ["apache2-foreground"]
