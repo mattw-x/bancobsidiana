@@ -72,5 +72,8 @@ class User extends Authenticatable
         return $this->hasManyThrough(Card::class, Account::class);
     }
 
-
+    public function merchant()
+    {
+        return $this->hasOne(Merchant::class, 'user_id', 'id');
+    }
 }
