@@ -26,7 +26,11 @@
                     </flux:navlist.item>
                 </flux:navlist.group>
             </flux:navlist>
-
+             @if(auth()->user()->is_admin && !request()->is('admin*'))
+                    <flux:button href="{{ route('admin.dashboard') }}" variant="ghost" icon="shield-check" class="mr-2 text-indigo-600" title="Panel de Control">
+                        Admin
+                    </flux:button>
+                @endif
             <flux:navlist variant="outline">
                 <flux:navlist.group :heading="__('Info')" class="grid">
                     <flux:navlist.item icon="information-circle" href="/about" :current="request()->routeIs('about.*')" wire:navigate>
@@ -142,7 +146,7 @@
                     {{ __('Dashboard') }}
                 </flux:navbar.item>
                 {{-- BOTÓN VOLVER A ADMIN (Solo si es admin y no está ya en el admin) --}}
-                @if( !request()->is('admin*'))
+                @if(auth()->user()->is_admin && !request()->is('admin*'))
                     <flux:button href="{{ route('admin.dashboard') }}" variant="ghost" icon="shield-check" class="mr-2 text-indigo-600" title="Panel de Control">
                         Admin
                     </flux:button>

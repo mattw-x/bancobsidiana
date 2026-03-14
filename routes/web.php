@@ -12,12 +12,13 @@ use Livewire\Attributes\On;
 use App\Http\Controllers\Web\AdminController;
 // Rutas de autenticación nativas (Breeze, Jetstream o UI)
 
-// Rutas protegidas
-Route::group(['prefix' => 'admin', 'middleware' => ['auth']], function () {
-    Route::get('/', [AdminController::class, 'index'])->name('admin.dashboard');
-    Route::post('/users/{user}/reset-password', [AdminController::class, 'resetPassword'])->name('admin.users.reset-password');
+Route::middleware(['auth'])->prefix('admin')->group(function () {
+    Route::get('/dashboard', [AdminController::class, 'index'])->name('admin.dashboard');
 
-    // Nueva ruta para guardar comercios
+    // Rutas nuevas
+    Route::post('/users/{user}/reset-password', [AdminController::class, 'resetPassword'])->name('admin.users.reset-password');
+    Route::post('/accounts/{account}/update-balance', [AdminController::class, 'updateBalance'])->name('admin.accounts.update-balance');
+    Route::post('/cards/{card}/toggle', [AdminController::class, 'toggleCard'])->name('admin.cards.toggle');
     Route::post('/merchants', [AdminController::class, 'storeMerchant'])->name('admin.merchants.store');
 });
 

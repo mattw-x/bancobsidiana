@@ -6,22 +6,41 @@ use App\Http\Controllers\Controller;
 use App\Models\User;
 use App\Models\Card;
 use App\Models\Merchant;
+use App\Models\Account;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 
 class AdminController extends Controller
 {
-    /**
-     * Muestra el Dashboard principal con todas las tablas.
-     */
     public function index() {
-    $users = \App\Models\User::with(['account', 'merchants'])->latest()->get() ?? collect();
-    $cards = \App\Models\Card::with('account.user')->latest()->get() ?? collect();
-    $merchants = \App\Models\Merchant::all() ?? collect();
-    $accounts = \App\Models\Account::with('user')->get() ?? collect();
+        // Obtenemos los datos necesarios
+        $users = User::with(['account', 'merchants'])->latest()->get();
+        $cards = Card::with('account.user')->latest()->get();
+        $merchants = Merchant::all();
+        $accounts = Account::with('user')->get();
 
-    return view('admin.dashboard', compact('users', 'cards', 'merchants', 'accounts'));
-}
+        // Pasamos 'cards' (no allCards) para que coincida con tu blade
+        return view('admin.dashboard', compact('users', 'cards', 'merchants', 'accounts'));
+    }
+
+    // NUEVA FUNCIÓN: Actualizar Saldo
+    public function updateBalance(Request $request, Account $account)
+    {
+        $request->validate(['balance' => 'required|numeric|min:0']);
+        $account->update(['balance' => $request->balance]);
+
+        return back()->with('success', "Saldo de la cuenta {$account->account_number} actualizado.");
+    }
+
+    // NUEVA FUNCIÓN: Bloquear/Desbloquear Tarjeta
+    public function toggleCard(Card $card)
+    {
+        $newStatus = ($card->status === 'active') ? 'blocked' : 'active';
+        $card->update(['status' => $newStatus]);
+
+        return back()->with('success', "Tarjeta {$card->card_number} ahora está: {$newStatus}.");
+    }
+
     public function storeMerchant(Request $request)
     {
         $request->validate([
@@ -30,20 +49,13 @@ class AdminController extends Controller
             'rif' => 'required|string',
         ]);
 
-        \App\Models\Merchant::create($request->all());
-
+        Merchant::create($request->all());
         return back()->with('success', 'Comercio afiliado exitosamente.');
     }
 
-    /**
-     * Resetea la contraseña de un usuario específico a "password".
-     */
     public function resetPassword(Request $request, User $user)
     {
-        $user->update([
-            'password' => Hash::make('password')
-        ]);
-
-        return back()->with('success', "Contraseña de {$user->name} restablecida a 'password'.");
+        $user->update(['password' => Hash::make('password')]);
+        return back()->with('success', "Contraseña de {$user->name} restablecida.");
     }
 }
