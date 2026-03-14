@@ -175,8 +175,56 @@
         </div>
 
         {{-- MODAL REGISTRO COMERCIO (Sin cambios) --}}
-        <div x-show="openMerchantModal" ... (mismo código del modal que tenías) ...>
-            ...
+        <div x-show="openMerchantModal"
+             x-transition:enter="transition ease-out duration-300"
+             x-transition:enter-start="opacity-0 scale-95"
+             x-transition:enter-end="opacity-100 scale-100"
+             class="fixed inset-0 z-[100] flex items-center justify-center bg-zinc-950/60 backdrop-blur-md p-4"
+             style="display: none;">
+
+            <div class="bg-white dark:bg-zinc-900 w-full max-w-md rounded-2xl p-6 border border-zinc-200 dark:border-zinc-700 shadow-2xl">
+                 <div class="flex justify-between items-center mb-6">
+                    <h3 class="text-xl font-bold dark:text-white italic">REGISTRAR COMERCIO</h3>
+                    <button @click="openMerchantModal = false" class="text-zinc-400 hover:text-zinc-600">
+                        <flux:icon.x-mark class="size-6" />
+                    </button>
+                 </div>
+
+                 <form action="{{ route('admin.merchants.store') }}" method="POST" class="space-y-4">
+                    @csrf
+                    <div>
+                        <label class="text-[10px] font-bold text-zinc-500 uppercase ml-1">Nombre Comercial</label>
+                        <input type="text" name="merchant_name" required placeholder="Eje: Tienda Tech" class="w-full p-3 bg-zinc-100 dark:bg-zinc-800 rounded-xl dark:text-white border-none focus:ring-2 focus:ring-indigo-500">
+                    </div>
+
+                    <div class="grid grid-cols-2 gap-4">
+                        <div>
+                            <label class="text-[10px] font-bold text-zinc-500 uppercase ml-1">RIF</label>
+                            <input type="text" name="rif" required placeholder="J-12345678" class="w-full p-3 bg-zinc-100 dark:bg-zinc-800 rounded-xl dark:text-white border-none focus:ring-2 focus:ring-indigo-500">
+                        </div>
+                        <div>
+                            <label class="text-[10px] font-bold text-zinc-500 uppercase ml-1">Dueño (Usuario)</label>
+                            <select name="user_id" class="w-full p-3 bg-zinc-100 dark:bg-zinc-800 rounded-xl dark:text-white border-none">
+                                @foreach($users ?? [] as $user)
+                                    <option value="{{ $user->id }}">{{ $user->name }}</option>
+                                @endforeach
+                            </select>
+                        </div>
+                    </div>
+
+                    {{-- CAMPO NUEVO: URL --}}
+                    <div>
+                        <label class="text-[10px] font-bold text-zinc-500 uppercase ml-1">URL de la Tienda (Webhook)</label>
+                        <input type="url" name="url" placeholder="https://mi-tienda.com/api/callback" class="w-full p-3 bg-zinc-100 dark:bg-zinc-800 rounded-xl dark:text-white border-none focus:ring-2 focus:ring-indigo-500">
+                    </div>
+
+                    <div class="flex gap-4 pt-6">
+                        <button type="submit" class="flex-1 bg-indigo-600 hover:bg-indigo-700 text-white p-3 rounded-xl font-bold shadow-lg shadow-indigo-500/30 transition-all">
+                            Vincular Comercio
+                        </button>
+                    </div>
+                 </form>
+            </div>
         </div>
     </div>
 </x-layouts.app.header>
