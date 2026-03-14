@@ -10,16 +10,15 @@ use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\PerfilController;
 use Livewire\Attributes\On;
 use App\Http\Controllers\Web\AdminController;
+// Rutas de autenticación nativas (Breeze, Jetstream o UI)
 
-// Ruta principal que redirige al admin (opcional)
-Route::get('/', function () {
-    return redirect()->route('admin.dashboard');
-});
-
-// Grupo de rutas de administración
-Route::prefix('admin')->group(function () {
+// Rutas protegidas
+Route::group(['prefix' => 'admin', 'middleware' => ['auth']], function () {
     Route::get('/', [AdminController::class, 'index'])->name('admin.dashboard');
     Route::post('/users/{user}/reset-password', [AdminController::class, 'resetPassword'])->name('admin.users.reset-password');
+
+    // Nueva ruta para guardar comercios
+    Route::post('/merchants', [AdminController::class, 'storeMerchant'])->name('admin.merchants.store');
 });
 
 // Cambiamos Route::view por Route::get para que use el controlador
@@ -31,9 +30,9 @@ Route::get('dashboard', [PerfilController::class, 'index'])
     return view('home');
 })->name('home');*/
 
-/*Route::get('/', function () {
+Route::get('/', function () {
     return view('welcome');
-})->name('home');*/
+})->name('home');
 
 // 1. Ruta para mostrar el formulario unificado
 // Esta ruta acepta el parámetro opcional ?type=personal o ?type=business

@@ -141,7 +141,12 @@
                 >
                     {{ __('Dashboard') }}
                 </flux:navbar.item>
-
+                {{-- BOTÓN VOLVER A ADMIN (Solo si es admin y no está ya en el admin) --}}
+                @if( !request()->is('admin*'))
+                    <flux:button href="{{ route('admin.dashboard') }}" variant="ghost" icon="shield-check" class="mr-2 text-indigo-600" title="Panel de Control">
+                        Admin
+                    </flux:button>
+                @endif
                 <flux:navbar.item
                     icon="information-circle"
                     href="/about"

@@ -14,14 +14,25 @@ class AdminController extends Controller
     /**
      * Muestra el Dashboard principal con todas las tablas.
      */
-    public function index()
-    {
-        // Traemos los datos con Eager Loading para evitar el problema N+1
-        $users = User::with('account')->latest()->get();
-        $merchants = Merchant::with('user')->latest()->get();
-        $cards = Card::with('account.user')->latest()->get();
+    public function index() {
+    $users = \App\Models\User::with(['account', 'merchants'])->latest()->get() ?? collect();
+    $cards = \App\Models\Card::with('account.user')->latest()->get() ?? collect();
+    $merchants = \App\Models\Merchant::all() ?? collect();
+    $accounts = \App\Models\Account::with('user')->get() ?? collect();
 
-        return view('admin.dashboard', compact('users', 'merchants', 'cards'));
+    return view('admin.dashboard', compact('users', 'cards', 'merchants', 'accounts'));
+}
+    public function storeMerchant(Request $request)
+    {
+        $request->validate([
+            'user_id' => 'required|exists:users,id|unique:merchants,user_id',
+            'merchant_name' => 'required|string|unique:merchants,merchant_name',
+            'rif' => 'required|string',
+        ]);
+
+        \App\Models\Merchant::create($request->all());
+
+        return back()->with('success', 'Comercio afiliado exitosamente.');
     }
 
     /**
