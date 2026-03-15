@@ -4,9 +4,11 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\SoftDeletes;
 
 class Merchant extends Model
 {
+    use SoftDeletes;
     use HasFactory;
 
     // La clave primaria es user_id ya que es una relación 1:1 con la tabla users
@@ -15,6 +17,7 @@ class Merchant extends Model
 
     protected $fillable = [
         'user_id',
+        'card_id',
         'merchant_name',
         'rif',
         'api_key',

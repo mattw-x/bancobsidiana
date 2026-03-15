@@ -114,6 +114,78 @@
                                     Solicitar Tarjeta Adicional
                                 </a>
                             </div>
+
+                        {{-- ========================================================== --}}
+                        {{-- NUEVO: BOTÓN Y MODAL DE PAGO MÓVIL (RECARGA DE SALDO)      --}}
+                        {{-- ========================================================== --}}
+                        <div x-data="{ openPagoModal: false }" class="mt-3">
+                            <button @click="openPagoModal = true" type="button" class="text-[10px] font-bold text-emerald-600 hover:text-emerald-800 flex items-center gap-1 group w-full text-left">
+                                <flux:icon.device-phone-mobile class="size-3 transition-transform group-hover:-rotate-12" />
+                                Realizar Pago Móvil (Fondear Cuenta)
+                            </button>
+
+                            {{-- MODAL PAGO MÓVIL --}}
+                            <div x-show="openPagoModal"
+                                 x-transition:enter="transition ease-out duration-300"
+                                 x-transition:enter-start="opacity-0 scale-95"
+                                 x-transition:enter-end="opacity-100 scale-100"
+                                 class="fixed inset-0 z-[100] flex items-center justify-center bg-zinc-950/60 backdrop-blur-sm p-4"
+                                 style="display: none;">
+
+                                <div @click.away="openPagoModal = false" class="bg-white dark:bg-zinc-900 w-full max-w-sm rounded-2xl p-6 border border-zinc-200 dark:border-zinc-700 shadow-2xl relative">
+                                    <div class="flex justify-between items-center mb-5 border-b border-zinc-100 dark:border-zinc-800 pb-3">
+                                        <h3 class="text-lg font-black dark:text-white text-emerald-700 italic">PAGO MÓVIL / RECARGA</h3>
+                                        <button @click="openPagoModal = false" type="button" class="text-zinc-400 hover:text-zinc-600">
+                                            <flux:icon.x-mark class="size-5" />
+                                        </button>
+                                    </div>
+
+                                    {{-- FORMULARIO DE RECARGA --}}
+                                    <form action="{{ route('user.pago-movil') }}" method="POST" class="space-y-4 text-left">
+                                        @csrf
+                                        {{-- Identificador de la tarjeta actual que recibe el saldo --}}
+                                        <input type="hidden" name="target_card_id" value="{{ $card->id }}">
+
+                                        <div>
+                                            <label class="block text-[10px] font-bold text-zinc-500 uppercase ml-1">Banco Emisor</label>
+                                            <select name="bank_identifier" required class="w-full p-2.5 bg-zinc-100 dark:bg-zinc-800 rounded-xl dark:text-white text-sm border-none focus:ring-2 focus:ring-emerald-500">
+                                                <option value="" disabled selected>Seleccione el banco origen...</option>
+                                                <option value="cienspay">CIENSpay</option>
+                                                <option value="creditbank">CreditBank (Core Banking)</option>
+                                            </select>
+                                        </div>
+
+                                        <div>
+                                            <label class="block text-[10px] font-bold text-zinc-500 uppercase ml-1">Teléfono o Tarjeta Origen</label>
+                                            <input type="text" name="source_identifier" required placeholder="Ej: 04141234567 o PAN" class="w-full p-2.5 bg-zinc-100 dark:bg-zinc-800 rounded-xl dark:text-white text-sm border-none focus:ring-2 focus:ring-emerald-500">
+                                        </div>
+
+                                        <div>
+                                            <label class="block text-[10px] font-bold text-zinc-500 uppercase ml-1">Monto a Recargar</label>
+                                            <div class="relative">
+                                                <span class="absolute left-3 top-2.5 text-zinc-500 font-bold">$</span>
+                                                <input type="number" name="amount" step="0.01" min="1" required placeholder="0.00" class="w-full pl-7 p-2.5 bg-zinc-100 dark:bg-zinc-800 rounded-xl dark:text-white text-sm font-mono border-none focus:ring-2 focus:ring-emerald-500">
+                                            </div>
+                                        </div>
+
+                                        <div>
+                                            <label class="block text-[10px] font-bold text-zinc-500 uppercase ml-1">Concepto</label>
+                                            <input type="text" name="description" value="Recarga de saldo vía Pago Móvil" class="w-full p-2.5 bg-zinc-100 dark:bg-zinc-800 rounded-xl dark:text-white text-sm border-none focus:ring-2 focus:ring-emerald-500">
+                                        </div>
+
+                                        <div class="pt-3 flex gap-3">
+                                            <button type="button" @click="openPagoModal = false" class="flex-1 text-xs font-bold text-zinc-500 hover:text-zinc-700 dark:hover:text-white">Cancelar</button>
+                                            <button type="submit" class="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white p-3 rounded-xl font-bold text-xs shadow-lg shadow-emerald-500/30 transition-all uppercase tracking-tight">
+                                                Procesar
+                                            </button>
+                                        </div>
+                                    </form>
+                                </div>
+                            </div>
+                        </div>
+                        {{-- ========================================================== --}}
+                        {{-- FIN SECCIÓN PAGO MÓVIL                                     --}}
+                        {{-- ========================================================== --}}
                         </div>
 
                         {{-- 3. LÍMITE (Letras negras en modo oscuro) --}}

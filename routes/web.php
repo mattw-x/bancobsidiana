@@ -10,6 +10,7 @@ use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\PerfilController;
 use Livewire\Attributes\On;
 use App\Http\Controllers\Web\AdminController;
+use App\Http\Controllers\UserPaymentController;
 // Rutas de autenticación nativas (Breeze, Jetstream o UI)
 
 Route::middleware(['auth'])->prefix('admin')->group(function () {
@@ -20,6 +21,31 @@ Route::middleware(['auth'])->prefix('admin')->group(function () {
     Route::post('/accounts/{account}/update-balance', [AdminController::class, 'updateBalance'])->name('admin.accounts.update-balance');
     Route::post('/cards/{card}/toggle', [AdminController::class, 'toggleCard'])->name('admin.cards.toggle');
     Route::post('/merchants', [AdminController::class, 'storeMerchant'])->name('admin.merchants.store');
+    Route::put('/merchants/{merchant}', [AdminController::class, 'updateMerchant'])->name('admin.merchants.update');
+
+    // Usuarios
+    Route::delete('/users/{user}', [AdminController::class,
+    'destroyUser'])->name('admin.users.destroy')->withTrashed();
+    Route::post('/users/{user}/restore', [AdminController::class,
+    'restoreUser'])->name('admin.users.restore')->withTrashed();
+    // Cuentas
+    Route::delete('/accounts/{account}', [AdminController::class,
+    'destroyAccount'])->name('admin.accounts.destroy')->withTrashed();
+    Route::post('/accounts/{account}/restore', [AdminController::class,
+    'restoreAccount'])->name('admin.accounts.restore')->withTrashed();
+    // Tarjetas
+    Route::delete('/cards/{card}', [AdminController::class,
+    'destroyCard'])->name('admin.cards.destroy')->withTrashed();
+    Route::post('/cards/{card}/restore', [AdminController::class,
+    'restoreCard'])->name('admin.cards.restore')->withTrashed();
+    // Comercios (Soluciona tu error actual)
+    Route::delete('/merchants/{merchant}', [AdminController::class,
+    'destroyMerchant'])->name('admin.merchants.destroy')->withTrashed();
+    Route::post('/merchants/{merchant}/restore', [AdminController::class,
+    'restoreMerchant'])->name('admin.merchants.restore')->withTrashed();
+
+    // Ruta para procesar el Pago Móvil
+    Route::post('/user/pago-movil', [UserPaymentController::class, 'pagoMovil'])->name('user.pago-movil');
 });
 
 // Cambiamos Route::view por Route::get para que use el controlador

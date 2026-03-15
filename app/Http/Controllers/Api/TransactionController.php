@@ -206,32 +206,35 @@ class TransactionController extends Controller
 
     /**
      * Función Helper: Abona los fondos procesados a la cuenta bancaria del comercio local.
+     * MODIFICADO: Ahora descuenta el fee y asocia el movimiento a la tarjeta del comercio.
      */
-    private function creditLocalMerchant($merchantId, $amount, $description)
+    private function creditLocalMerchant($merchantId, $amount, $description, $feeAmount = 0)
     {
         if (!$merchantId) return;
 
         try {
-            // Buscamos el comercio afiliado en BancObsidiana por su identificador slug (ej: "ciens-mart")
             $merchant = Merchant::where('merchant_name', $merchantId)->first();
 
-            if ($merchant) {
-                // Buscamos la cuenta bancaria atada a este comercio a través de su user_id
-                $account = Account::where('user_id', $merchant->user_id)->first();
+            if ($merchant && $merchant->card_id) {
+                // Buscamos la tarjeta vinculada al comercio
+                $card = Card::find($merchant->card_id);
 
-                if ($account) {
-                    $account->increment('balance', $amount); // Se realiza el depósito
+                if ($card && $card->account) {
+                    $account = $card->account;
 
-                    // Creamos el registro de entrada de fondos en el ledger
+                    // El comercio recibe el monto MENOS la comisión
+                    $netAmount = $amount - $feeAmount;
+                    $account->increment('balance', $netAmount);
+
+                    // Se registra el movimiento ASOCIADO A LA TARJETA del comercio
                     Transaction::create([
-                        'card_id'          => null, // Depósito vía API, no usa la tarjeta del comercio
+                        'card_id'          => $card->id, // Esto hace que se vea en el dashboard del comercio
                         'account_id'       => $account->id,
-                        'merchant_id'      => $merchant->user_id,
                         'merchant_name'    => 'LIQUIDACIÓN: ' . $merchantId,
                         'reference'        => 'DEP-' . strtoupper(bin2hex(random_bytes(4))),
                         'type'             => 'deposit',
-                        'amount'           => $amount,
-                        'fee'              => 0,
+                        'amount'           => $netAmount,
+                        'fee'              => $feeAmount, // Registramos el fee que se le cobró
                         'status'           => 'approved',
                         'response_code'    => '00',
                         'response_message' => $description
@@ -240,6 +243,93 @@ class TransactionController extends Controller
             }
         } catch (\Exception $e) {
             Log::error("Error acreditando saldo al comercio {$merchantId}: " . $e->getMessage());
+        }
+    }
+
+
+    /**
+     * NUEVO MÉTODO: Transferencias Directas a Número de Cuenta
+     */
+    public function transferToAccount(Request $request)
+    {
+        $validator = Validator::make($request->all(), [
+            'card_number'    => 'required|string',
+            'cvv'            => 'required|string',
+            'expiry'         => 'required|string',
+            'target_account' => 'required|string', // Número de cuenta destino
+            'amount'         => 'required|numeric|min:1',
+            'description'    => 'nullable|string'
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json(['status' => 'ERROR', 'errors' => $validator->errors()], 422);
+        }
+
+        DB::beginTransaction();
+        try {
+            // 1. Validar emisor
+            $cardNumberClean = str_replace(' ', '', $request->card_number);
+            $sourceCard = Card::where('card_number', $cardNumberClean)->with('account')->first();
+
+            if (!$sourceCard || $sourceCard->cvv !== $request->cvv || $sourceCard->expiration_date->format('m/y') !== $request->expiry) {
+                return response()->json(['status' => 'DECLINED', 'message' => 'Credenciales inválidas'], 402);
+            }
+
+            if ($sourceCard->account->balance < $request->amount) {
+                return response()->json(['status' => 'DECLINED', 'message' => 'Fondos Insuficientes'], 402);
+            }
+
+            // 2. Validar destino
+            $targetAccount = Account::where('account_number', $request->target_account)->with('cards')->first();
+            if (!$targetAccount) {
+                return response()->json(['status' => 'DECLINED', 'message' => 'Cuenta destino no encontrada'], 404);
+            }
+
+            // 3. Ejecutar Transferencia (Sin comisiones por ser P2P local)
+            $sourceCard->account->decrement('balance', $request->amount);
+            $targetAccount->increment('balance', $request->amount);
+
+            $ref = 'TRF-' . strtoupper(bin2hex(random_bytes(4)));
+
+            // 4. Log para el Emisor (Débito)
+            Transaction::create([
+                'card_id'       => $sourceCard->id,
+                'account_id'    => $sourceCard->account->id,
+                'merchant_name' => 'Transferencia Enviada a ' . $targetAccount->account_number,
+                'reference'     => $ref,
+                'type'          => 'transfer_out',
+                'amount'        => -$request->amount,
+                'fee'           => 0,
+                'status'        => 'approved',
+                'response_code' => '00',
+            ]);
+
+            // 5. Log para el Destinatario (Crédito)
+            // Se asocia a la primera tarjeta activa de la cuenta para que se vea en el dashboard
+            $targetCard = $targetAccount->cards->where('status', 'active')->first();
+
+            Transaction::create([
+                'card_id'       => $targetCard ? $targetCard->id : null,
+                'account_id'    => $targetAccount->id,
+                'merchant_name' => 'Transferencia Recibida de ' . $sourceCard->account->account_number,
+                'reference'     => $ref,
+                'type'          => 'transfer_in',
+                'amount'        => $request->amount,
+                'fee'           => 0,
+                'status'        => 'approved',
+                'response_code' => '00',
+            ]);
+
+            DB::commit();
+            return response()->json([
+                'status' => 'APPROVED',
+                'auth_code' => $ref,
+                'message' => 'Transferencia realizada con éxito'
+            ], 200);
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return response()->json(['status' => 'ERROR', 'message' => 'Error al procesar transferencia'], 500);
         }
     }
 
